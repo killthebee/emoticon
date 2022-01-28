@@ -4,9 +4,12 @@ import aiofiles
 
 from typing import List
 from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse
 from dependency_injector.wiring import inject, Provide
 
 from app.redis.containers import Container
+from app.models.user import UserInDB
+from app.api.dependencies.auth import get_current_user
 from app.redis.services import Service
 
 router = APIRouter()
@@ -34,16 +37,12 @@ async def handle_new_emoticon(emoticon_word, service):
 @inject
 async def emoticons(
         emoticon_word: str,
-        service: Service = Depends(Provide[Container.service])
-) -> List[dict]:
-    #
+        service: Service = Depends(Provide[Container.service]),
+        current_user: UserInDB = Depends(get_current_user)
+) -> RedirectResponse:
     if not await service.get_emoticon_word(emoticon_word):
         await handle_new_emoticon(emoticon_word, service)
-    cleanings = [
-        {"id": 1, "name": "My house", "cleaning_type": "full_clean", "price_per_hour": 29.99},
-        {"id": 2, "name": "Someone else's house", "cleaning_type": "spot_clean", "price_per_hour": 19.99}
-    ]
-    return cleanings
+    return RedirectResponse(f"http://127.0.0.1/emoticon_files/{emoticon_word}.png")
 
 
 container = Container()
