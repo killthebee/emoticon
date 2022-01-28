@@ -16,8 +16,17 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
+
+def create_users_table() -> None:
+    op.create_table(
+        "users",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("username", sa.Text, unique=True, nullable=False, index=True),
+        sa.Column("password", sa.Text, nullable=False)
+    )
+
 def upgrade() -> None:
-    pass
+    create_users_table()
 
 def downgrade() -> None:
-    pass
+    op.drop_table("users")
