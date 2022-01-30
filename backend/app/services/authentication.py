@@ -55,7 +55,7 @@ class AuthService:
         access_token = jwt.encode(token_payload.dict(), secret_key, algorithm=JWT_ALGORITHM)
         return access_token
 
-    def get_username_from_token(self, *, token: str, secret_key:str) -> Optional[str]:
+    def get_username_from_token(self, *, token: str, secret_key: str) -> Optional[str]:
         try:
             decoded_token = jwt.decode(token, str(secret_key), audience=JWT_AUDIENCE, algorithms=[JWT_ALGORITHM])
             payload = JWTPayload(**decoded_token)
