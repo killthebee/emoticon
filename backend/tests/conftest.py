@@ -9,6 +9,9 @@ from httpx import AsyncClient
 from databases import Database
 from alembic.config import Config
 
+from app.models.user import UserCreate, UserInDB
+from app.db.repositories.users import UsersRepository
+
 
 @pytest.fixture(scope="session")
 def apply_migrations():
@@ -42,3 +45,16 @@ async def client(app: FastAPI) -> AsyncClient:
             headers={"content-type": "application/json"}
         ) as client:
             yield client
+
+
+@pytest.fixture
+async def test_user(db: Database) -> UserInDB:
+    new_user = UserCreate(
+        username="username7",
+        password="password1234567"
+    )
+    user_repo = UsersRepository(db)
+    existing_user = await user_repo.get_user_by_username(username=new_user.username)
+    if existing_user:
+        return existing_user
+    return await user_repo.register_new_user(new_user=new_user)
