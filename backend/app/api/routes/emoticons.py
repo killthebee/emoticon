@@ -2,7 +2,6 @@ import httpx
 import asyncio
 import aiofiles
 
-from typing import List
 from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from dependency_injector.wiring import inject, Provide

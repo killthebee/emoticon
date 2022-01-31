@@ -42,4 +42,3 @@ async def client(app: FastAPI) -> AsyncClient:
             headers={"content-type": "application/json"}
         ) as client:
             yield client
-
