@@ -6,23 +6,14 @@ from fastapi import FastAPI
 from pydantic import ValidationError
 from starlette.datastructures import Secret
 from databases import Database
-from typing import List, Union, Type, Optional
+from typing import Union, Type
 
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-)
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from app.models.user import UserCreate, UserInDB
 from app.db.repositories.users import UsersRepository
 from app.services import auth_service
 from app.core.config import SECRET_KEY, JWT_ALGORITHM, JWT_AUDIENCE, JWT_TOKEN_PREFIX, ACCESS_TOKEN_EXPIRE_MINUTES
-from app.models.token import JWTMeta, JWTCreds, JWTPayload
-
 pytestmark = pytest.mark.asyncio
 
 
@@ -146,3 +137,54 @@ class TestAuthTokens:
                 expires_in=ACCESS_TOKEN_EXPIRE_MINUTES,
             )
             jwt.decode(access_token, str(SECRET_KEY), audience=JWT_AUDIENCE, algorithms=[JWT_ALGORITHM])
+
+
+class TestUserLogin:
+    async def test_user_can_login_successfully_and_receives_valid_token(
+        self, app: FastAPI, client: AsyncClient, test_user: UserInDB,
+    ) -> None:
+        client.headers["content-type"] = "application/x-www-form-urlencoded"
+        login_data = {
+            "username": test_user.username,
+            "password": "password1234567",
+        }
+        res = await client.post(app.url_path_for("users:login-username-and-password"), data=login_data)
+        assert res.status_code == HTTP_200_OK
+
+        token = res.json().get("access_token")
+        creds = jwt.decode(token, str(SECRET_KEY), audience=JWT_AUDIENCE, algorithms=[JWT_ALGORITHM])
+        assert "username" in creds
+        assert creds["username"] == test_user.username
+        assert "token_type" in res.json()
+        assert res.json().get("token_type") == "bearer"
+
+    @pytest.mark.parametrize(
+        "credential, wrong_value, status_code",
+        (
+            ("username", "lalalala", 401),
+            ("username", None, 401),
+            ("username", "hm", 401),
+            ("password", "pw", 401),
+            ("password", None, 401),
+        ),
+    )
+    async def test_user_with_wrong_creds_doesnt_receive_token(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        test_user: UserInDB,
+        credential: str,
+        wrong_value: str,
+        status_code: int,
+    ) -> None:
+        client.headers["content-type"] = "application/x-www-form-urlencoded"
+        user_data = test_user.dict()
+        user_data["password"] = "password1234567"
+        user_data[credential] = wrong_value
+        login_data = {
+            "username": user_data["username"],
+            "password": user_data["password"],
+        }
+        res = await client.post(app.url_path_for("users:login-username-and-password"), data=login_data)
+        assert res.status_code == status_code
+        assert "access_token" not in res.json()
